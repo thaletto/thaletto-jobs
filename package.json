@@ -4,9 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "update:effect-smol": "git fetch --depth 1 https://github.com/Effect-TS/effect-smol.git main && git subtree pull --prefix=libs/effect-smol https://github.com/Effect-TS/effect-smol.git main --squash"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.85.1",
     "@types/bun": "latest"
   },
   "peerDependencies": {
