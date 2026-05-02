@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "add:effect-smol": "git subtree add --prefix libs/effect https://github.com/Effect-TS/effect-smol.git main --squash",
-    "update:effect-smol": "git subtree pull --prefix libs/effect https://github.com/Effect-TS/effect-smol.git main --squash"
+    "add:effect": "git subtree add --prefix libs/effect https://github.com/Effect-TS/effect-smol.git main --squash",
+    "update:effect": "git subtree pull --prefix libs/effect https://github.com/Effect-TS/effect-smol.git main --squash"
   },
   "devDependencies": {
     "@effect/language-service": "^0.85.1",
