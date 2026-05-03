@@ -41,34 +41,42 @@ Developers instrument their agents with a single import. Every LLM call, tool in
 
 The system has three layers that work together:
 
-```
-┌─────────────────────────────────────┐
-│           Agent code                │
-│  import { observe } from            │
-│    "@thaletto/observe"              │
-│                                     │
-│  Instruments LLM calls,             │
-│  tool invocations, agent steps      │
-└────────────────┬────────────────────┘
-                 │ HTTP POST /traces (JSON)
-                 ▼
-┌─────────────────────────────────────┐
-│        Collector (Effect v4)        │
-│                                     │
-│  HTTP server — receives spans       │
-│  Assembles spans into trace trees   │
-│  Persists to SQLite via             │
-│    effect/unstable/sql              │
-└────────────────┬────────────────────┘
-                 │ SQL queries
-                 ▼
-┌─────────────────────────────────────┐
-│         Dashboard (Next.js)         │
-│                                     │
-│  Reads from SQLite                  │
-│  Renders trace timelines            │
-│  Served at localhost:4318           │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph SDK ["Agent Code"]
+        direction TB
+        A["import { observe } from<br/>'@thaletto/observe'"]
+        B["Instruments LLM calls,<br/>tool invocations, agent steps"]
+    end
+
+    SDK -->|HTTP POST /spans| C[("Collector<br/>(Effect v4)")]
+    
+    subgraph C ["Collector (Effect v4)"]
+        direction TB
+        C1["HTTP server<br/>receives spans"]
+        C2["Assembles spans<br/>into trace trees"]
+        C3["Persists to SQLite<br/>effect/unstable/sql"]
+    end
+    
+    C -->|SQL queries| D[("SQLite<br/>Database")]
+
+    D -->|Reads| E[("Dashboard<br/>(Next.js)")]
+    
+    subgraph E ["Dashboard (Next.js)"]
+        direction TB
+        E1["Reads from SQLite"]
+        E2["Renders trace timelines"]
+        E3["Served at<br/>localhost:4318"]
+    end
+
+    classDef primary fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    classDef secondary fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef storage fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    
+    class SDK primary
+    class C primary
+    class D storage
+    class E secondary
 ```
 
 ### Component Responsibilities
