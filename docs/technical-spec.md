@@ -2,7 +2,7 @@
 
 > **Status:** Draft  
 > **Author:** Laxman K R  
-> **Stack:** Effect v4 (beta), TypeScript, Bun, Next.js  
+> **Stack:** Effect v4 (beta), TypeScript, Bun, TanStack Start  
 > **Note:** Effect v4 is currently in beta. `effect/unstable/*` modules (HTTP, Schema, SQL) may receive breaking changes in minor releases. This project intentionally targets v4 to explore its patterns — not recommended for production use until v4 stabilises.
 
 ---
@@ -60,19 +60,15 @@ flowchart TB
     
     C -->|SQL queries| D[("SQLite<br/>Database")]
 
-    D -->|Reads| E[("Dashboard<br/>(Next.js)")]
+    D -->|Reads| E[("Dashboard<br/>(TanStack Start)")]
     
-    subgraph E ["Dashboard (Next.js)"]
+    subgraph E ["Dashboard (TanStack Start)"]
         direction TB
         E1["Reads from SQLite"]
         E2["Renders trace timelines"]
         E3["Served at<br/>localhost:4318"]
     end
 
-    classDef primary fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
-    classDef secondary fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef storage fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    
     class SDK primary
     class C primary
     class D storage
@@ -85,7 +81,7 @@ flowchart TB
 
 **Collector** (`src/collector/`) — Effect v4 HTTP server. Receives span events, validates them with `effect/unstable/schema`, assembles them into trace trees, and writes to SQLite. Built with `effect/unstable/http` and `@effect/sql-sqlite-bun`.
 
-**Dashboard** (`src/dashboard/`) — Next.js app. Reads directly from SQLite. Shows trace list, trace detail timeline, span detail, and a regression view. Served locally alongside the collector.
+**Dashboard** (`src/dashboard/`) — TanStack Start app. Reads directly from SQLite. Shows trace list, trace detail timeline, span detail, and a regression view. Served locally alongside the collector.
 
 **CLI** (`src/cli/`) — Built with `effect/unstable/cli`. Entry point for `npx @thaletto/observe`. Starts the collector + dashboard together, opens the browser.
 
@@ -368,7 +364,7 @@ CREATE INDEX idx_traces_started_at ON traces(started_at DESC);
 
 ## 6. Dashboard
 
-Built with Next.js (App Router). Reads directly from SQLite — no separate API layer needed since it runs on the same machine.
+Built with TanStack Store (TanStack Start). Reads directly from SQLite — no separate API layer needed since it runs on the same machine.
 
 ### Views
 
@@ -508,7 +504,7 @@ These are not yet decided and need resolution before or during implementation:
 | 3 | SDK batching strategy | Batch by count (10) or time (1s), whichever first | Need to handle offline collector gracefully — queue and retry? |
 | 4 | Async context propagation | `AsyncLocalStorage` for automatic parent span tracking | Need to verify Bun's `AsyncLocalStorage` behaviour matches Node |
 | 5 | Effect v4 beta risk | v4 is beta — `unstable/*` modules may break | Acceptable for a portfolio/learning project; would use v3 for production |
-| 6 | Dashboard tech | Next.js vs plain HTML served by Effect | Next.js adds complexity to the CLI bundle; plain HTML is simpler to ship |
+| 6 | Dashboard tech | TanStack Start vs plain HTML served by Effect | Next.js adds complexity to the CLI bundle; plain HTML is simpler to ship |
 | 7 | SDK bundle size | Effect as peer dependency vs bundled | If bundled, SDK becomes heavy for non-Effect agents — peer dep preferred |
 
 ---
@@ -535,7 +531,7 @@ These are not yet decided and need resolution before or during implementation:
 │   │   │   └── schema.ts      # Span / Trace schemas
 │   │   └── package.json
 │   │
-│   ├── dashboard/         # Next.js app
+│   ├── dashboard/         # TanStack Start app
 │   │   ├── app/
 │   │   │   ├── page.tsx           # Trace list
 │   │   │   ├── traces/[id]/       # Trace detail
