@@ -264,37 +264,54 @@ Built entirely with Effect v4.
 ### Service Architecture
 
 ```ts
-import { ServiceMap } from "effect"
+import * as Context from "effect/Context"
+import { Effect, Layer } from "effect"
+import { SqlClient } from "@effect/sql-sqlite-bun"
 
-// Storage service
-class TraceStore extends ServiceMap.Service<TraceStore>()("TraceStore", {
-  make: Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient
-    return {
-      insertSpan: (span: Span) => ...,
-      getTrace:   (traceId: string) => ...,
-      listTraces: (limit: number) => ...,
-    }
-  })
-}) {
-  static readonly layer = Layer.effect(this, this.make)
+class TraceStore extends Context.Service<
+  TraceStore,
+  {
+    readonly insertSpan: (span: Span) => Effect.Effect<void>
+    readonly getTrace: (traceId: string) => Effect.Effect<Trace>
+    readonly listTraces: (limit: number) => Effect.Effect<readonly Trace[]>
+  }
+>()("@app/TraceStore") {
+  static readonly layer = Layer.effect(
+    TraceStore,
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      return {
+        insertSpan: (span: Span) => ...,
+        getTrace: (traceId: string) => ...,
+        listTraces: (limit: number) => ...,
+      }
+    })
+  )
 }
 
-// Ingestion service
-class SpanIngester extends ServiceMap.Service<SpanIngester>()("SpanIngester", {
-  make: Effect.gen(function* () {
-    const store = yield* TraceStore
-    return {
-      ingest: (span: Span) => Effect.gen(function* () {
-        const validated = yield* Schema.decode(Span)(span).pipe(
-          Effect.mapError(e => new ValidationError({ cause: e }))
-        )
-        yield* store.insertSpan(validated)
-      })
-    }
-  })
-}) {
-  static readonly layer = Layer.effect(this, this.make)
+import { Schema } from "effect/unstable/schema"
+
+class SpanIngester extends Context.Service<
+  SpanIngester,
+  {
+    readonly ingest: (span: Span) => Effect.Effect<void>
+  }
+>()("@app/SpanIngester") {
+  static readonly layer = Layer.effect(
+    SpanIngester,
+    Effect.gen(function* () {
+      const store = yield* TraceStore
+      return {
+        ingest: (span: Span) =>
+          Effect.gen(function* () {
+            const validated = yield* Schema.decode(Span)(span).pipe(
+              Effect.mapError((cause) => new ValidationError({ cause }))
+            )
+            yield* store.insertSpan(validated)
+          }),
+      }
+    })
+  )
 }
 ```
 
