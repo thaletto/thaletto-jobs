@@ -4351,6 +4351,53 @@ export const orElseSucceed: {
   ): Effect<A | A2, never, R>
 } = internal.orElseSucceed
 
+/**
+ * Runs a sequence of effects and returns the result of the first successful
+ * one.
+ *
+ * **Details**
+ *
+ * This function executes the provided effects in sequence, stopping at the
+ * first success. If an effect succeeds, its result is returned immediately and
+ * no further effects in the sequence are executed.
+ *
+ * If all effects fail, the returned effect fails with the error from the last
+ * effect. If the collection is empty, the returned effect defects with an
+ * `Error` whose message is `"Received an empty collection of effects"`.
+ *
+ * **When to Use**
+ *
+ * Use `firstSuccessOf` when you have prioritized fallback strategies, such as
+ * attempting multiple APIs, reading configuration from several sources, or
+ * trying alternative resource locations in order.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const primary = Effect.fail("primary unavailable")
+ * const secondary = Effect.succeed("secondary result")
+ * const tertiary = Effect.sync(() => {
+ *   throw new Error("not evaluated")
+ * })
+ *
+ * const program = Effect.firstSuccessOf([
+ *   primary,
+ *   secondary,
+ *   tertiary
+ * ])
+ *
+ * console.log(Effect.runSync(program))
+ * // Output: "secondary result"
+ * ```
+ *
+ * @since 2.0.0
+ * @category Fallback
+ */
+export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
+  effects: Iterable<Eff>
+) => Effect<Success<Eff>, Error<Eff>, Services<Eff>> = internal.firstSuccessOf
+
 // -----------------------------------------------------------------------------
 // Delays & timeouts
 // -----------------------------------------------------------------------------
@@ -6228,6 +6275,47 @@ export const acquireRelease: <A, E, R, R2>(
   release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<unknown, never, R2>,
   options?: { readonly interruptible?: boolean }
 ) => Effect<A, E, R | R2 | Scope> = internal.acquireRelease
+
+/**
+ * This function constructs a scoped resource from an Effect that acquires a
+ * disposable value.
+ *
+ * The resource is automatically disposed when the surrounding
+ * {@link Scope} is closed, using {@link Symbol.dispose} for
+ * synchronous disposables or {@link Symbol.asyncDispose} for asynchronous
+ * disposables.
+ *
+ * This is similar to {@link acquireRelease}, but uses the standard
+ * JavaScript disposal protocal instead of requiring an explicit release
+ * function.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using}
+ *
+ * @example
+ * ```ts
+ * import sqlite from "node:sqlite";
+ * import { Effect } from "effect";
+ *
+ * const program = Effect.scoped(
+ *   Effect.gen(function* () {
+ *     // acquire database connection
+ *     // database will be closed when the scope is closed
+ *     const db = yield* Effect.acquireDisposable(
+ *       Effect.sync(() => new sqlite.DatabaseSync(":memory:"))
+ *     )
+ *
+ *     const row = db.prepare("SELECT 1 AS value").get()
+ *     yield* Effect.log(row) // { value: 1 }
+ *   })
+ * )
+ * ```
+ *
+ * @since 4.0.0
+ * @category Resource Management & Finalization
+ */
+export const acquireDisposable: <A extends AsyncDisposable | Disposable, E, R>(
+  acquire: Effect<A, E, R>
+) => Effect<A, E, R | Scope> = internal.acquireDisposable
 
 /**
  * This function is used to ensure that an `Effect` value that represents the

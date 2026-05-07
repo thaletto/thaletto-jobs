@@ -511,6 +511,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._children = undefined
     this._interruptedCause = undefined
     this._yielded = undefined
+    this.runtimeMetrics?.recordFiberStart(this.context)
   }
 
   readonly [FiberTypeId]: Fiber.Fiber.Variance<A, E>
@@ -582,7 +583,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    this.runtimeMetrics?.recordFiberStart(this.context)
     if (this._exit) {
       return
     } else if (this._yielded !== undefined) {
@@ -3184,6 +3184,24 @@ export const orElseSucceed: {
 )
 
 /** @internal */
+export const firstSuccessOf = <Eff extends Effect.Effect<any, any, any>>(
+  effects: Iterable<Eff>
+): Effect.Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Services<Eff>> =>
+  suspend(() => {
+    const iterator = effects[Symbol.iterator]()
+    let state = iterator.next()
+    if (state.done) {
+      return die(new Error("Received an empty collection of effects"))
+    }
+    function loop(current: IteratorYieldResult<Eff>): Eff {
+      const next = iterator.next()
+      if (next.done) return current.value
+      return catch_(current.value, (_) => loop(next)) as any
+    }
+    return loop(state)
+  })
+
+/** @internal */
 export const eventually = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, never, R> =>
   catch_(self, (_) => flatMap(yieldNow, () => eventually(self)))
 
@@ -4034,6 +4052,15 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
         true
       ))
   )
+
+/** @internal */
+export const acquireDisposable = <A extends AsyncDisposable | Disposable, E, R>(
+  acquire: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R | Scope.Scope> =>
+  acquireRelease(acquire, (resource) =>
+    hasProperty(resource, Symbol.asyncDispose)
+      ? promise(() => resource[Symbol.asyncDispose]())
+      : sync(() => resource[Symbol.dispose]()))
 
 // ----------------------------------------------------------------------------
 // Caching
