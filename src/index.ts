@@ -1,1 +1,3 @@
-console.log("Hello, TypeScript!");
+import { Effect } from "effect";
+
+Effect.succeed(199)
