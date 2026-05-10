@@ -7,20 +7,10 @@ bun install          # Install dependencies
 bun run index.ts     # Run the app
 ```
 
-## Updating effect subtree
+## Local Effect Source
 
-```bash
-bun run update:effect   # Git subtree pull from Effect-TS/effect-smol
-```
+The Effect v4 repository is cloned to `~/.local/share/effect-solutions/effect` for reference.
+Use this to explore APIs, find usage examples, and understand implementation
+details when the documentation isn't enough.
 
-## Effect Best Practices
-
-**IMPORTANT:** Always consult effect-solutions before writing Effect code.
-
-1. Run (macOS only) `effect-solutions list` to see available guides
-2. Run (macOS only) `effect-solutions show <topic>...` for relevant patterns (supports multiple topics)
-3. Search `libs/effect` for real implementations
-
-Topics: quick-start, project-setup, tsconfig, basics, services-and-layers, data-modeling, error-handling, config, testing, cli.
-
-Never guess at Effect patterns - check the guide first.
+To update later: `git -C ~/.local/share/effect-solutions/effect pull --depth 1`
