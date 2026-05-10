@@ -1,8 +1,8 @@
-# PRD: Effect.js Memory Layer Package
+# PRD: Cortex (Effect Memory Layer)
 
 ## 1. Problem Statement
 
-**Problem:** Effect.js developers need a **developer-controlled context memory system** for:
+**Problem:** Effect developers need a **developer-controlled context memory system** for:
 - AI/LLM applications requiring persistent context storage
 - Applications needing semantic memory retrieval
 - Developer-explicit memory management (not automatic state persistence)
@@ -10,34 +10,34 @@
 
 **Current Pain Points:**
 - Manual context management in AI applications
-- No native Effect.js solution for semantic memory
+- No native Effect solution for semantic memory
 - Complex integration with vector databases for context
 - Lack of developer-controlled memory patterns
 
 ## 2. Proposed Solution
 
-**Product:** `@effect/memory-layer` - A developer-controlled context memory layer for Effect.js applications
+**Product:** `@thaletto/cortex` - A developer-controlled context memory layer for Effect applications
 
 ### Core Features:
 - **Explicit Context Storage**: Developers choose what to store and when
 - **Semantic Memory**: Vector search for retrieving related context
 - **Developer API**: Simple methods to add, search, and manage context
 - **Type Safety**: Full TypeScript support with Effect Schema
-- **Performance**: Optimized for Effect.js async patterns
+- **Performance**: Optimized for Effect async patterns
 
 ### Developer Experience:
 ```typescript
-import { MemoryContext } from "@effect/memory-layer"
+import { Memory } from "@thaletto/cortex"
 
 // Developer explicitly stores context
-const storeContext = await MemoryContext.add({
+const storeContext = await Memory.add({
   id: "user-123",
   content: "User prefers TypeScript over JavaScript",
   category: "user-preferences"
 })
 
 // Developer searches for related context
-const relevantContext = await MemoryContext.search("user programming preferences")
+const relevantContext = await Memory.search("user programming preferences")
 ```
 
 ## 3. Architecture
@@ -45,10 +45,10 @@ const relevantContext = await MemoryContext.search("user programming preferences
 ### High-Level Architecture:
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           Effect.js Application                         │
-│  (React, Express, CLI tool, etc.)                                       │
+│                           Effect Library                                │
+│                           (`npm` package)                               │
 ├─────────────────────────────────────────────────────────────────────────┤
-│                      @effect/memory-layer Package                       │
+│                       @thaletto/cortex Package                          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
 │  │   Effect Layer  │  │ Context Manager │  │ Vector Engine   │          │
@@ -92,9 +92,9 @@ interface ContextInput {
 }
 ```
 
-#### 2. **Context Manager** (Effect.js Business Logic)
+#### 2. **Context Manager** (Effect Business Logic)
 ```typescript
-// Effect.js service layer managing context lifecycle
+// Effect service layer managing context lifecycle
 class ContextManager {
   private cache: Effect<Map<ContextId, Context>>
   private indexer: Effect<ContextIndex>
@@ -160,7 +160,7 @@ graph TD
 - **Memory Management**: Automatic cleanup and quota management
 
 #### **Error Handling:**
-- **Effect Either**: Proper error handling using Effect.js Either type
+- **Effect Either**: Proper error handling using Effect Either type
 - **Validation**: Input validation at API layer
 - **Graceful Degradation**: Fallback strategies for vector operations
 - **Monitoring**: Comprehensive logging and metrics
@@ -169,7 +169,7 @@ graph TD
 
 ### Technologies:
 - **Language**: TypeScript (ES2022+)
-- **Framework**: Effect.js
+- **Framework**: Effect
 - **Vector Engine**: Z Vector (Alibaba)
 - **Testing**: Effect Testing, Vitest
 - **Build**: TypeScript, Rollup
@@ -184,7 +184,7 @@ graph TD
 ```
 
 ### Target Users:
-- Effect.js developers building AI/LLM applications
+- Effect developers building AI/LLM applications
 - Teams needing context persistence
 - Chatbot and agent developers
 - Applications requiring semantic memory
@@ -196,7 +196,7 @@ graph TD
 - [ ] Integrate Z Vector engine
 - [ ] Create basic context storage interface
 - [ ] Implement add/search/delete operations
-- [ ] Add Effect.js integration patterns
+- [ ] Add Effect integration patterns
 
 ### Phase 2: Context Management (Weeks 4-5)
 - [ ] Implement context categorization
@@ -229,7 +229,7 @@ graph TD
 
 ### Why This Package?
 - **Developer Control**: Explicit context storage, not automatic state persistence
-- **Effect.js Native**: Built specifically for Effect.js patterns and ecosystem
+- **Effect Native**: Built specifically for Effect patterns and ecosystem
 - **Lightweight**: In-process vector database (Z Vector) for optimal performance
 - **Type-Safe**: Full TypeScript integration with Effect Schema
 - **Flexible**: Supports various context types and search strategies
@@ -237,7 +237,7 @@ graph TD
 ### Competitors:
 - **Generic Vector DBs**: Complex setup, not framework-specific
 - **Manual Implementation**: Time-consuming, error-prone
-- **Other Memory Libraries**: Lack Effect.js integration or developer control
+- **Other Memory Libraries**: Lack Effect integration or developer control
 
 ## 7. Risks & Mitigation
 
@@ -248,11 +248,11 @@ graph TD
 
 ### Project Risks:
 - **Scope Creep**: Strict 8-week timeline with clear phases
-- **Effect.js Compatibility**: Test with multiple versions
-- **Adoption**: Focus on AI/Effect.js community for initial users
+- **Effect Compatibility**: Test with multiple versions
+- **Adoption**: Focus on AI/Effect community for initial users
 
 ---
 
 **Estimated Timeline**: 8 weeks (2 months)
-**Target Audience**: Effect.js developers building AI applications
+**Target Audience**: Effect developers building AI applications
 **Launch Goal**: Production-ready package with comprehensive documentation and examples
