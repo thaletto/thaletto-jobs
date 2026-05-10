@@ -3,10 +3,6 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
-  "scripts": {
-    "add:effect": "git subtree add --prefix libs/effect https://github.com/Effect-TS/effect-smol.git main --squash",
-    "update:effect": "git subtree pull --prefix libs/effect https://github.com/Effect-TS/effect-smol.git main --squash"
-  },
   "devDependencies": {
     "@effect/language-service": "^0.85.1",
     "@types/bun": "latest"
