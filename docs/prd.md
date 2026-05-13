@@ -27,17 +27,24 @@
 
 ### Developer Experience:
 ```typescript
-import { Memory } from "@thaletto/cortex"
+import { MemoryService } from "@thaletto/cortex"
 
-// Developer explicitly stores context
-const storeContext = await Memory.add({
-  id: "user-123",
-  content: "User prefers TypeScript over JavaScript",
-  category: "user-preferences"
-})
+const memory = MemoryService.of()
 
-// Developer searches for related context
-const relevantContext = await Memory.search("user programming preferences")
+const storeContext = await Effect.runPromise(
+  memory.add({
+    id: "user-123",           // Developer-provided ID (required)
+    content: "User prefers TypeScript over JavaScript",
+    category: "user-preferences"
+  })
+)
+
+const relevantContext = await Effect.runPromise(
+  memory.search({
+    queryText: "user programming preferences",
+    options: { category: "user-preferences", limit: 5 }
+  })
+)
 ```
 
 ## 3. Architecture
@@ -51,126 +58,173 @@ const relevantContext = await Memory.search("user programming preferences")
 │                       @thaletto/cortex Package                          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
-│  │   Effect Layer  │  │ Context Manager │  │ Vector Engine   │          │
-│  │                 │  │                 │  │                 │          │
-│  │ • add()         │  │ • Lifecycle     │  │ • Z Vector DB   │          │
-│  │ • search()      │  │ • Cache Mgmt    │  │ • Similarity    │          │
-│  │ • delete()      │  │ • Indexing      │  │ • Storage       │          │
-│  │ • query()       │  │ • Validation    │  │ • Performance   │          │
+│  │  MemoryService  │  │ ContextManager │  │  VectorEngine   │          │
+│  │                 │  │                │  │                 │          │
+│  │ • add()         │  │ • Validation   │  │ • Storage       │          │
+│  │ • addMany()     │  │ • TTL Check    │  │ • Similarity    │          │
+│  │ • search()      │  │ • Indexing     │  │ • Interface     │          │
+│  │ • searchMany()  │  │                │  │                 │          │
+│  │ • delete()      │  │                │  │                 │          │
+│  │ • query()       │  │                │  │                 │          │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                              Data Flow                                  │
-│  1. Effect      →         2. Context Manager   → 3. Vector Engine       │
-│     (add/search/delete)   (processing)         (storage/retrieval)      │
+│  Developer  →  MemoryService  →  ContextManager  →  VectorEngine        │
+│                              ↓                                          │
+│                      VectorStore (pluggable)                           │
 │                                                                         │
-│  Developer Actions:                                                     │
-│  • Store explicit context (user preferences, chat history, etc.)        │
-│  • Search semantic context (find related information)                   │
-│  • Manage context lifecycle (cleanup, expiration)                       │
+│  Cleanup: Effect.schedule for periodic cleanup                          │
 └─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Detailed Component Breakdown:
-
-#### 1. **API Layer** (Developer Interface)
-```typescript
-// Main entry point for developers
-interface MemoryContext {
-  add(context: ContextInput): Effect<ContextId, MemoryError>
-  search(query: string, options?: SearchOptions): Effect<Array<Context>, MemoryError>
-  delete(id: ContextId): Effect<void, MemoryError>
-  query(filter: ContextFilter): Effect<Array<Context>, MemoryError>
-}
-
-interface ContextInput {
-  id?: ContextId           // Optional auto-generated ID
-  content: string          // The context content to store
-  category: string         // User-defined category (e.g., "user-prefs", "chat")
-  metadata?: Record<string, any>  // Additional metadata
-  tags?: string[]         // Search tags
-  ttl?: Duration         // Time-to-live (optional)
-}
-```
-
-#### 2. **Context Manager** (Effect Business Logic)
-```typescript
-// Effect service layer managing context lifecycle
-class ContextManager {
-  private cache: Effect<Map<ContextId, Context>>
-  private indexer: Effect<ContextIndex>
-  
-  // Effect-based operations
-  storeContext(input: ContextInput): Effect<ContextId, MemoryError>
-  retrieveContext(id: ContextId): Effect<Option<Context>, MemoryError>
-  searchContext(query: string): Effect<Array<Context>, MemoryError>
-  cleanupExpired(): Effect<void, MemoryError>
-}
-```
-
-#### 3. **Vector Engine** (Z Vector Integration)
-```typescript
-// Low-level vector operations using Z Vector
-interface VectorEngine {
-  // Storage operations
-  storeVector(id: string, vector: Float32Array, metadata: any): Effect<void, VectorError>
-  searchVector(query: Float32Array, limit: number): Effect<Array<VectorResult>, VectorError>
-  deleteVector(id: string): Effect<void, VectorError>
-  
-  // Vector operations
-  embed(text: string): Effect<Float32Array, EmbeddingError>
-  calculateSimilarity(a: Float32Array, b: Float32Array): Effect<number, Error>
-}
-```
-
-#### 4. **Data Flow Architecture**
-```mermaid
-graph TD
-    A[Developer Application] --> B[API Layer]
-    B --> C[Context Manager]
-    C --> D[Vector Engine]
-    D --> E[Z Vector Storage]
-    
-    E --> F[Similarity Search]
-    F --> C
-    C --> B
-    B --> A
-    
-    G[Configuration] --> C
-    H[Monitoring] --> C
 ```
 
 ### Key Design Decisions:
 
-#### **Memory Organization:**
-- **Categories**: Developer-defined context types (user-prefs, chat-history, app-state)
-- **Metadata**: Flexible key-value pairs for context organization
-- **Tags**: Simple text tags for additional filtering
-- **TTL**: Optional expiration for time-sensitive context
+| Decision | Choice | Rationale |
+|---|---|---|
+| ID Ownership | Developer-provided only | Eliminates existence checks, explicit contract |
+| API Structure | Service-based | Effect DI, testable, composable |
+| Embeddings | Interface (users provide impl) | Clean boundaries, no API key exposure |
+| Vector Storage | Zvec (in-process, WAL persistence) | Battle-tested at Alibaba, zero infra, hybrid search |
+| Error Handling | Data.taggedClass | Effect-native, typed, exhaustive |
+| Search/Filters | Unified (queryText + filters) | Single method, predictable |
+| TTL | Invisible on read | No background processes, devs schedule cleanup |
+| Caching | None (add later if needed) | Measure first, avoid premature complexity |
+| Batch Ops | Yes (addMany, searchMany) | AI apps need bulk storage |
 
-#### **Search Strategy:**
-- **Semantic Search**: Vector similarity for content-based retrieval
-- **Category Filtering**: Filter by context type
-- **Tag Matching**: Text-based tag filtering
-- **Hybrid Search**: Combined semantic + categorical search
+### Detailed Component Breakdown:
 
-#### **Performance Considerations:**
-- **Caching**: Effect-based caching for frequently accessed context
-- **Batch Operations**: Efficient bulk storage/retrieval
-- **Indexing**: Optimized for fast similarity search
-- **Memory Management**: Automatic cleanup and quota management
+#### 1. **MemoryService** (Developer Interface)
+```typescript
+class MemoryService {
+  add(input: ContextInput): Effect<ContextId, MemoryError>
+  addMany(inputs: ContextInput[]): Effect<Array<ContextId>, MemoryError>
+  search(options: SearchOptions): Effect<Array<Context>, MemoryError>
+  searchMany(queries: SearchOptions[]): Effect<Array<Array<Context>>, MemoryError>
+  delete(id: ContextId): Effect<void, MemoryError>
+  query(filter: ContextFilter): Effect<Array<Context>, MemoryError>
+}
+```
 
-#### **Error Handling:**
-- **Effect Either**: Proper error handling using Effect Either type
-- **Validation**: Input validation at API layer
-- **Graceful Degradation**: Fallback strategies for vector operations
-- **Monitoring**: Comprehensive logging and metrics
+#### 2. **ContextInput** (Storage Contract)
+```typescript
+interface ContextInput {
+  id: string                     // Required — developer provides
+  content: string                 // Text to embed and store
+  category: string                // User-defined category
+  metadata?: Record<string, unknown>  // Optional metadata
+  tags?: string[]                // Optional search tags
+  expiresAt?: Date               // Optional TTL (checked on read)
+}
+```
+
+#### 3. **SearchOptions** (Unified Query)
+```typescript
+interface SearchOptions {
+  queryText?: string             // Semantic query (embedding lookup)
+  category?: string              // Filter by category
+  tags?: string[]                // Filter by tags
+  limit?: number                // Max results (default: 10)
+  threshold?: number            // Similarity threshold (0-1)
+  metadata?: Record<string, unknown>  // Metadata filter
+}
+```
+
+#### 4. **Error Types** (Effect Data.taggedClass)
+```typescript
+class MemoryError extends Data.TaggedClass {
+  readonly _tag: "NotFound"
+  readonly id: string
+}
+
+class ValidationError extends Data.TaggedClass {
+  readonly _tag: "ValidationFailed"
+  readonly errors: string[]
+}
+
+class VectorStoreError extends Data.TaggedClass {
+  readonly _tag: "VectorStoreError"
+  readonly cause: unknown
+}
+
+class EmbeddingError extends Data.TaggedClass {
+  readonly _tag: "EmbeddingError"
+  readonly cause: unknown
+}
+```
+
+#### 5. **ContextManager** (Business Logic)
+```typescript
+class ContextManager {
+  store(input: ContextInput): Effect<ContextId, MemoryError>
+  retrieve(id: ContextId): Effect<Option<Context>, MemoryError>
+  search(options: SearchOptions): Effect<Array<Context>, MemoryError>
+  delete(id: ContextId): Effect<void, MemoryError>
+  cleanupExpired(): Effect<void, MemoryError>  // For Effect.schedule use
+}
+```
+
+#### 6. **VectorEngine** (Abstraction Layer)
+```typescript
+interface VectorStore {
+  store(id: string, vector: Float32Array, metadata: ContextMetadata): Effect<void, MemoryError>
+  search(queryVector: Float32Array, options: SearchOptions): Effect<Array<VectorResult>, MemoryError>
+  delete(id: string): Effect<void, MemoryError>
+  get(id: string): Effect<Option<VectorResult>, MemoryError>
+}
+
+interface EmbeddingService {
+  embed(text: string): Effect<Float32Array, EmbeddingError>
+}
+```
+
+#### 7. **Default Storage** (Phase 1)
+```typescript
+// Zvec — in-process vector DB with WAL persistence
+// Supports hybrid search (dense + sparse vectors, metadata filters)
+import { ZvecClient } from "zvec"
+
+class ZvecVectorStore implements VectorStore {
+  constructor(
+    private collection: string,
+    private client: ZvecClient
+  ) {}
+
+  store(id: string, vector: Float32Array, metadata: ContextMetadata): Effect<void, MemoryError>
+  search(queryVector: Float32Array, options: SearchOptions): Effect<Array<VectorResult>, MemoryError>
+  delete(id: string): Effect<void, MemoryError>
+  get(id: string): Effect<Option<VectorResult>, MemoryError>
+}
+```
+
+### Data Flow:
+```
+add(input)
+  └─ Validate (ContextManager)
+  └─ Embed text (EmbeddingService)
+  └─ Store vector + metadata (VectorStore)
+  └─ Return ContextId
+
+search(options)
+  └─ Embed queryText if present (EmbeddingService)
+  └─ Query VectorStore (similarity + filters)
+  └─ Filter expired (expiresAt > now)
+  └─ Return Array<Context>
+
+delete(id)
+  └─ Remove from VectorStore
+  └─ No cache invalidation needed
+
+cleanupExpired() — exposed for Effect.schedule usage
+  └─ Scan all entries
+  └─ Remove where expiresAt < now
+```
 
 ## 4. Actors Involved
 
 ### Technologies:
 - **Language**: TypeScript (ES2022+)
 - **Framework**: Effect
-- **Vector Engine**: Z Vector (Alibaba)
+- **Vector Engine**: Interface + InMemory default (no hard dependency)
 - **Testing**: Effect Testing, Vitest
 - **Build**: TypeScript, Rollup
 
@@ -178,8 +232,8 @@ graph TD
 ```json
 {
   "effect": "^latest",
-  "zvec": "^1.0.0",
-  "effect-schema": "^latest"
+  "effect-schema": "^latest",
+  "@zvec/zvec": "^latest"
 }
 ```
 
@@ -191,29 +245,31 @@ graph TD
 
 ## 5. Project Plan
 
-### Phase 1: Core Context API (Weeks 1-3)
+### Phase 1: Core MemoryService API (Weeks 1-3)
 - [ ] Setup project structure and build system
-- [ ] Integrate Z Vector engine
-- [ ] Create basic context storage interface
-- [ ] Implement add/search/delete operations
-- [ ] Add Effect integration patterns
+- [ ] Define MemoryService interface (add, addMany, search, searchMany, delete, query)
+- [ ] Implement InMemoryVectorStore
+- [ ] Implement ContextManager with validation
+- [ ] Implement error types (Data.taggedClass)
+- [ ] Add EmbeddingService interface
+- [ ] Write unit tests
 
-### Phase 2: Context Management (Weeks 4-5)
-- [ ] Implement context categorization
-- [ ] Add context metadata and tags
-- [ ] Create context search with filters
-- [ ] Add context expiration policies
-- [ ] Implement context relationships
+### Phase 2: Search & Filtering (Weeks 4-5)
+- [ ] Implement unified SearchOptions (queryText + filters)
+- [ ] Add category/tag/metadata filtering
+- [ ] Add similarity threshold support
+- [ ] Implement TTL filtering on read
+- [ ] Add batch search (searchMany)
 
 ### Phase 3: Developer Experience (Weeks 6-7)
+- [ ] Create default OpenAI EmbeddingService adapter
 - [ ] Create comprehensive documentation
-- [ ] Add AI application examples
-- [ ] Implement configuration system
-- [ ] Add error handling and logging
-- [ ] Create test suite
+- [ ] Add AI application examples (chatbot, RAG, agent)
+- [ ] Implement configuration system (configurable embedding, store)
+- [ ] Document cleanup scheduling with Effect.schedule
 
 ### Phase 4: Polish & Release (Week 8)
-- [ ] Performance optimization
+- [ ] Performance profiling (no caching initially)
 - [ ] Package publication
 - [ ] GitHub setup
 - [ ] Community outreach
@@ -228,27 +284,28 @@ graph TD
 ## 6. Key Differentiators
 
 ### Why This Package?
-- **Developer Control**: Explicit context storage, not automatic state persistence
-- **Effect Native**: Built specifically for Effect patterns and ecosystem
-- **Lightweight**: In-process vector database (Z Vector) for optimal performance
-- **Type-Safe**: Full TypeScript integration with Effect Schema
-- **Flexible**: Supports various context types and search strategies
+- **Developer Control**: Explicit context storage, developer-provided IDs, not automatic state persistence
+- **Effect Native**: Built specifically for Effect Service pattern and ecosystem
+- **Pluggable Storage**: In-process for dev, upgrade path to cloud vector DBs
+- **Type-Safe**: Full TypeScript integration with Effect Data.taggedClass errors
+- **Batch-First**: addMany/searchMany for AI use cases
+- **Clean Boundaries**: EmbeddingService is user-provided, Cortex owns storage/search
 
 ### Competitors:
-- **Generic Vector DBs**: Complex setup, not framework-specific
-- **Manual Implementation**: Time-consuming, error-prone
-- **Other Memory Libraries**: Lack Effect integration or developer control
+- **Generic Vector DBs**: Complex setup, not Effect-native, require infrastructure
+- **Manual Implementation**: Time-consuming, error-prone, inconsistent patterns
+- **Other Memory Libraries**: Lack Effect integration, lack batch operations, over-engineered
 
 ## 7. Risks & Mitigation
 
 ### Technical Risks:
-- **Z Vector Dependency**: Fallback to FAISS/ChromaDB if needed
-- **Memory Management**: Comprehensive testing and monitoring
-- **Performance Issues**: Early profiling and optimization
+- **Embedding Provider Dependency**: Interface is clean, users bring their own. No API key exposure.
+- **Memory Management**: No caching initially. Developers use Effect.schedule for cleanup.
+- **Vector Store Migration**: Interface-first design enables future migration without API changes.
 
 ### Project Risks:
 - **Scope Creep**: Strict 8-week timeline with clear phases
-- **Effect Compatibility**: Test with multiple versions
+- **Effect Compatibility**: Test with multiple Effect versions
 - **Adoption**: Focus on AI/Effect community for initial users
 
 ---
