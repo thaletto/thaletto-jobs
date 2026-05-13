@@ -50,32 +50,36 @@ const relevantContext = await Effect.runPromise(
 ## 3. Architecture
 
 ### High-Level Architecture:
+
+```mermaid
+flowchart TB
+    subgraph Effect["Effect Library (npm)"]
+    end
+
+    subgraph Cortex["@thaletto/cortex Package"]
+        subgraph Services["Services"]
+            MS["MemoryService\n• add() • addMany()\n• search() • searchMany()\n• delete() • query()"]
+            CM["ContextManager\n• Validation\n• TTL Check\n• Indexing"]
+            VE["VectorEngine\n• Storage\n• Similarity\n• Interface"]
+        end
+
+        VS["VectorStore\n(pluggable)"]
+    end
+
+    Developer -->|"uses"| MS
+    MS -->|"orchestrates"| CM
+    CM -->|"stores/searches"| VE
+    VE -->|"implements"| VS
+    VS -.->|"ZVec default"| ZV["ZVec (in-process)"]
+    VS -.->|"future|cloud"| Cloud["Cloud Vector DB"]
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           Effect Library                                │
-│                           (`npm` package)                               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                       @thaletto/cortex Package                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
-│  │  MemoryService  │  │ ContextManager │  │  VectorEngine   │          │
-│  │                 │  │                │  │                 │          │
-│  │ • add()         │  │ • Validation   │  │ • Storage       │          │
-│  │ • addMany()     │  │ • TTL Check    │  │ • Similarity    │          │
-│  │ • search()      │  │ • Indexing     │  │ • Interface     │          │
-│  │ • searchMany()  │  │                │  │                 │          │
-│  │ • delete()      │  │                │  │                 │          │
-│  │ • query()       │  │                │  │                 │          │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                              Data Flow                                  │
-│  Developer  →  MemoryService  →  ContextManager  →  VectorEngine        │
-│                              ↓                                          │
-│                      VectorStore (pluggable)                           │
-│                                                                         │
-│  Cleanup: Effect.schedule for periodic cleanup                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+
+**Data Flow:**
+1. Developer calls `MemoryService`
+2. `ContextManager` validates and orchestrates
+3. `VectorEngine` handles storage/similarity
+4. `VectorStore` plugin (ZVec by default) persists data
+5. `Effect.schedule` handles periodic cleanup
 
 ### Key Design Decisions:
 
@@ -197,26 +201,48 @@ class ZvecVectorStore implements VectorStore {
 ```
 
 ### Data Flow:
-```
-add(input)
-  └─ Validate (ContextManager)
-  └─ Embed text (EmbeddingService)
-  └─ Store vector + metadata (VectorStore)
-  └─ Return ContextId
 
-search(options)
-  └─ Embed queryText if present (EmbeddingService)
-  └─ Query VectorStore (similarity + filters)
-  └─ Filter expired (expiresAt > now)
-  └─ Return Array<Context>
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant MS as MemoryService
+    participant CM as ContextManager
+    participant ES as EmbeddingService
+    participant VS as VectorStore
 
-delete(id)
-  └─ Remove from VectorStore
-  └─ No cache invalidation needed
+    rect rgb(240, 240, 240)
+        Note over Dev,VS: add(input)
+        Dev->>MS: add(ContextInput)
+        MS->>CM: validate input
+        CM->>ES: embed(content)
+        ES-->>CM: Float32Array
+        CM->>VS: store(id, vector, metadata)
+        VS-->>CM: void
+        CM-->>MS: ContextId
+        MS-->>Dev: ContextId
+    end
 
-cleanupExpired() — exposed for Effect.schedule usage
-  └─ Scan all entries
-  └─ Remove where expiresAt < now
+    rect rgb(230, 245, 230)
+        Note over Dev,VS: search(options)
+        Dev->>MS: search(SearchOptions)
+        opt queryText provided
+            MS->>ES: embed(queryText)
+            ES-->>MS: queryVector
+        end
+        MS->>VS: search(queryVector, filters)
+        VS-->>MS: Array<VectorResult>
+        MS->>CM: filter expired
+        CM-->>MS: Array<Context>
+        MS-->>Dev: Array<Context>
+    end
+
+    rect rgb(245, 230, 230)
+        Note over Dev,VS: delete(id)
+        Dev->>MS: delete(ContextId)
+        MS->>VS: deleteEntry(id)
+        VS-->>MS: void
+        MS-->>Dev: void
+    end
 ```
 
 ## 4. Actors Involved
