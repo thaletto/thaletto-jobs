@@ -52,7 +52,7 @@ const relevantContext = await Effect.runPromise(
 ### High-Level Architecture:
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Effect["Effect Library (npm)"]
     end
 
