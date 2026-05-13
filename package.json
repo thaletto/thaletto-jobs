@@ -1,5 +1,5 @@
 {
-  "name": "thaletto-jobs",
+  "name": "cortex",
   "module": "index.ts",
   "type": "module",
   "private": true,
