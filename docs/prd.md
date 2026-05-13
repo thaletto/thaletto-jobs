@@ -85,7 +85,7 @@ const relevantContext = await Effect.runPromise(
 | API Structure | Service-based | Effect DI, testable, composable |
 | Embeddings | Interface (users provide impl) | Clean boundaries, no API key exposure |
 | Vector Storage | Zvec (in-process, WAL persistence) | Battle-tested at Alibaba, zero infra, hybrid search |
-| Error Handling | Data.taggedClass | Effect-native, typed, exhaustive |
+| Error Handling | Data.TaggedError | Effect-native, typed, exhaustive |
 | Search/Filters | Unified (queryText + filters) | Single method, predictable |
 | TTL | Invisible on read | No background processes, devs schedule cleanup |
 | Caching | None (add later if needed) | Measure first, avoid premature complexity |
@@ -129,7 +129,7 @@ interface SearchOptions {
 }
 ```
 
-#### 4. **Error Types** (Effect Data.taggedClass)
+#### 4. **Error Types** (Effect Data.TaggedError)
 ```typescript
 class MemoryError extends Data.TaggedClass {
   readonly _tag: "NotFound"
@@ -224,7 +224,7 @@ cleanupExpired() — exposed for Effect.schedule usage
 ### Technologies:
 - **Language**: TypeScript (ES2022+)
 - **Framework**: Effect
-- **Vector Engine**: Interface + InMemory default (no hard dependency)
+- **Vector Engine**: Zvec (in-process, WAL persistence) with interface for pluggability
 - **Testing**: Effect Testing, Vitest
 - **Build**: TypeScript, Rollup
 
@@ -245,20 +245,45 @@ cleanupExpired() — exposed for Effect.schedule usage
 
 ## 5. Project Plan
 
+### Current Status (as of 2026-05-14)
+
+**Implemented:**
+- [x] Project structure with Effect + TypeScript
+- [x] `VectorStore` service interface (store, search, getEntry, deleteEntry, size)
+- [x] `ZVecCollection` adapter with `ZVecCollectionLive` layer
+- [x] Domain schema types (`VectorMetadata`, `StoredEntry`, `SearchResult`, `SearchOptions`, `VectorId`)
+- [x] Error types (`VectorStoreError`, `VectorNotFoundError`, `VectorDecodeError`)
+- [x] Codec utilities for serialization/deserialization
+- [x] Filter building for category/tag/TTL queries
+- [x] Demo application in `demo/index.ts`
+
+**In Progress:**
+- [ ] TTL filtering on read — filter expression exists, needs implementation in `getEntry`
+- [ ] In-memory fallback for testing
+
+**Not Started:**
+- [ ] `MemoryService` (high-level API with add, addMany, search, searchMany, delete, query)
+- [ ] `ContextManager` (validation, embedding orchestration)
+- [ ] `EmbeddingService` interface + OpenAI adapter
+- [ ] Unit tests
+- [ ] Batch operations (addMany, searchMany)
+- [ ] Similarity threshold support
+
 ### Phase 1: Core MemoryService API (Weeks 1-3)
-- [ ] Setup project structure and build system
-- [ ] Define MemoryService interface (add, addMany, search, searchMany, delete, query)
-- [ ] Implement InMemoryVectorStore
+- [x] Setup project structure and build system
+- [x] Define VectorStore interface (store, search, getEntry, deleteEntry, size)
+- [ ] Implement MemoryService (add, addMany, search, searchMany, delete, query)
+- [x] Implement ZvecVectorStore
 - [ ] Implement ContextManager with validation
-- [ ] Implement error types (Data.taggedClass)
+- [x] Implement error types (Data.TaggedError)
 - [ ] Add EmbeddingService interface
 - [ ] Write unit tests
 
 ### Phase 2: Search & Filtering (Weeks 4-5)
-- [ ] Implement unified SearchOptions (queryText + filters)
-- [ ] Add category/tag/metadata filtering
+- [x] Implement SearchOptions (category, tags filters)
+- [ ] Implement queryText embedding lookup
 - [ ] Add similarity threshold support
-- [ ] Implement TTL filtering on read
+- [x] Implement TTL filtering on read (via filter expression)
 - [ ] Add batch search (searchMany)
 
 ### Phase 3: Developer Experience (Weeks 6-7)
@@ -287,7 +312,7 @@ cleanupExpired() — exposed for Effect.schedule usage
 - **Developer Control**: Explicit context storage, developer-provided IDs, not automatic state persistence
 - **Effect Native**: Built specifically for Effect Service pattern and ecosystem
 - **Pluggable Storage**: In-process for dev, upgrade path to cloud vector DBs
-- **Type-Safe**: Full TypeScript integration with Effect Data.taggedClass errors
+- **Type-Safe**: Full TypeScript integration with Effect `Data.TaggedError` errors
 - **Batch-First**: addMany/searchMany for AI use cases
 - **Clean Boundaries**: EmbeddingService is user-provided, Cortex owns storage/search
 
