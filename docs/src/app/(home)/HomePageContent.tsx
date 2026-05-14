@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import BorderGlow from "@/components/BorderGlow";
+import Image from "next/image";
 
 function GitHubIcon({ size = 24 }: { size?: number }) {
   return (
@@ -13,7 +14,9 @@ function GitHubIcon({ size = 24 }: { size?: number }) {
 export default function HomePageContent() {
   return (
     <BorderGlow className="flex flex-col justify-center text-center max-w-2xl m-auto p-4">
-      <h1 className="text-4xl font-bold mb-4 text-white">Cortex</h1>
+      <div className="flex items-center justify-center mb-8 mt-2">
+        <Image src="/cortex-logo.svg" alt="Logo" width={116} height={116} />
+      </div>
       <p className="text-lg text-gray-300 mb-8">
         Developer-controlled context memory layer for Effect applications
       </p>
