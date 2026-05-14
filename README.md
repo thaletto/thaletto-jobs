@@ -1,10 +1,7 @@
 # @thaletto/cortex
 
-> Developer-controlled context memory layer for Effect applications
-
 Vector storage for AI/LLM applications, built with [Effect](https://effect.website) and [ZVec](https://github.com/zvec/zvec). Type-safe, pluggable, and designed for explicit memory management.
 
-![Cortex Banner](/assets/cortex-banner.png)
 
 > **⚠️ Beta** — Effect v4 beta. API may change.
 
