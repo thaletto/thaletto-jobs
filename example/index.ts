@@ -7,8 +7,11 @@
 import { Effect, Layer, Schema as S, Terminal } from "effect";
 import { VectorStore, VectorStoreLive, ZVecCollectionLive, ZVecCollectionConfig, type VectorStoreShape } from "../src/index.ts";
 import { VectorMetadata, VectorId } from "../src/schema/index.ts";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, rmSync } from "node:fs";
 import { layer as BunTerminalLayer } from "@effect/platform-bun/BunTerminal";
+
+// Start fresh: remove any ZVec data from prior runs
+rmSync(".cortex", { recursive: true, force: true });
 
 const DIM = 128;
 
