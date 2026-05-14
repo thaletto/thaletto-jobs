@@ -4,28 +4,26 @@
  * Default: example/sample.txt
  */
 
-import { Effect, Layer, Schema as S, Console } from "effect";
-import { VectorStore, VectorStoreLive, ZVecCollectionLive, ZVecCollectionConfig } from "../src/index.ts";
+import { Effect, Layer, Schema as S, Terminal } from "effect";
+import { VectorStore, VectorStoreLive, ZVecCollectionLive, ZVecCollectionConfig, type VectorStoreShape } from "../src/index.ts";
 import { VectorMetadata, VectorId } from "../src/schema/index.ts";
 import { readFileSync, existsSync } from "node:fs";
-import * as readline from "node:readline";
+import { layer as BunTerminalLayer } from "@effect/platform-bun/BunTerminal";
 
 const DIM = 128;
 
 function textToVector(text: string, dim: number = DIM): Float32Array {
   const v = new Float32Array(dim);
   const lower = text.toLowerCase();
-  // Hash character trigrams into vector positions
   for (let i = 0; i < lower.length - 2; i++) {
-    const tri = lower.charCodeAt(i) * 97 + lower.charCodeAt(i + 1) * 31 + lower.charCodeAt(i + 2);
+    const tri = lower.charCodeAt(i)! * 97 + lower.charCodeAt(i + 1)! * 31 + lower.charCodeAt(i + 2)!;
     const pos = Math.abs(tri) % dim;
-    v[pos] += 1;
+    v[pos]! += 1;
   }
-  // Normalize to unit vector
   let norm = 0;
-  for (const x of v) norm += x * x;
+  for (let i = 0; i < dim; i++) norm += v[i]! * v[i]!;
   norm = Math.sqrt(norm);
-  if (norm > 0) for (let i = 0; i < dim; i++) v[i] /= norm;
+  if (norm > 0) for (let i = 0; i < dim; i++) v[i] = v[i]! / norm;
   return v;
 }
 
@@ -46,63 +44,67 @@ function chunkText(text: string, maxWords: number = 80, overlap: number = 20): A
 
 const ConfigLayer = Layer.succeed(ZVecCollectionConfig, { dimension: DIM });
 const CollectionLayer = Layer.provideMerge(ZVecCollectionLive, ConfigLayer);
-const DemoLayer = Layer.provideMerge(VectorStoreLive, CollectionLayer);
+const StoreLayer = Layer.provideMerge(VectorStoreLive, CollectionLayer);
+const MainLayer = Layer.provideMerge(StoreLayer, BunTerminalLayer);
 
-Effect.runPromise(
-  Effect.gen(function* () {
-    const store = yield* VectorStore;
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+  const terminal = yield* Terminal.Terminal;
 
-    const filePath = process.argv[2] || "./example/sample.txt";
-    if (!existsSync(filePath)) {
-      yield* Console.log(`File not found: ${filePath}`);
-      yield* Console.log("Create a .txt file or pass an existing path as argument.");
-      return;
-    }
+  const filePath = process.argv[2] || "./example/sample.txt";
+  if (!existsSync(filePath)) {
+    yield* terminal.display(`File not found: ${filePath}\n`);
+    yield* terminal.display("Create a .txt file or pass an existing path as argument.\n");
+    return;
+  }
 
-    const text = readFileSync(filePath, "utf-8");
-    const chunks = chunkText(text);
+  const text = readFileSync(filePath, "utf-8");
+  const chunks = chunkText(text);
 
-    yield* Console.log(`\n  File: ${filePath}`);
-    yield* Console.log(`  Chunks: ${chunks.length}`);
-    yield* Console.log("  Storing vectors...\n");
+  yield* terminal.display(`\n  File: ${filePath}\n`);
+  yield* terminal.display(`  Chunks: ${chunks.length}\n`);
+  yield* terminal.display("  Storing vectors...\n\n");
 
-    for (const chunk of chunks) {
-      const id = S.decodeSync(VectorId)(`chunk-${chunk.index}`);
-      const meta = new VectorMetadata({
-        content: chunk.text,
-        category: "knowledge",
-        tags: [],
-        metadata: { source: filePath },
-        expiresAt: null,
-      });
-      yield* store.store(id, textToVector(chunk.text), meta);
-    }
+  for (const chunk of chunks) {
+    const id = S.decodeSync(VectorId)(`chunk-${chunk.index}`);
+    const meta = new VectorMetadata({
+      content: chunk.text,
+      category: "knowledge",
+      tags: [],
+      metadata: { source: filePath },
+      expiresAt: null,
+    });
+    yield* store.store(id, textToVector(chunk.text), meta);
+  }
 
-    yield* Console.log(`  Stored ${chunks.length} chunks. Ready.\n`);
+  yield* terminal.display(`  Stored ${chunks.length} chunks. Ready.\n\n`);
 
-    // Interactive search loop
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  yield* loop(store, terminal);
+});
 
-    const question = (query: string) =>
-      Effect.promise<string>(() => new Promise(resolve => rl.question(query, resolve)));
-
-    const loop = Effect.gen(function* () {
-      const query = yield* question("Search > ");
-      if (query.toLowerCase() === "quit" || query.toLowerCase() === "exit") {
-        rl.close();
+function loop(
+  store: VectorStoreShape,
+  terminal: Terminal.Terminal,
+): Effect.Effect<void, unknown> {
+  return Effect.suspend(() =>
+    Effect.gen(function* () {
+      yield* terminal.display("Search > ");
+      const query = yield* terminal.readLine;
+      const input = query.trim();
+      if (input.toLowerCase() === "quit" || input.toLowerCase() === "exit") {
         return;
       }
-      const results = yield* store.search(textToVector(query), { limit: 3 });
+      const results = yield* store.search(textToVector(input), { limit: 3 });
       if (results.length === 0) {
-        yield* Console.log("  No matches.\n");
+        yield* terminal.display("  No matches.\n\n");
       }
       for (const r of results) {
-        yield* Console.log(`  [${r.score.toFixed(3)}] ${r.content.substring(0, 120)}`);
+        yield* terminal.display(`  [${r.score.toFixed(3)}] ${r.content.substring(0, 120)}\n`);
       }
-      yield* Console.log("");
-      yield* loop;
-    });
+      yield* terminal.display("\n");
+      yield* loop(store, terminal);
+    })
+  );
+}
 
-    yield* loop;
-  }).pipe(Effect.provide(DemoLayer)),
-);
+Effect.runPromise(Effect.provide(program, MainLayer));
