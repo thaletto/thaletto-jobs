@@ -32,11 +32,11 @@ export interface VectorStoreShape {
   ) => Effect.Effect<ReadonlyArray<SearchResult>, VectorStoreErrors>;
 
   /**
-   * Fetch a single entry by id. Returns null when not found.
+   * Fetch a single entry by id. Fails with VectorNotFoundError when not found.
    */
   readonly getEntry: (
     id: VectorId
-  ) => Effect.Effect<StoredEntry | null, VectorStoreErrors>;
+  ) => Effect.Effect<StoredEntry, VectorStoreErrors>;
 
   /**
    * Delete an entry by id. No-ops silently when not found.
