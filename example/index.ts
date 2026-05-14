@@ -86,7 +86,7 @@ function loop(
   store: VectorStoreShape,
   terminal: Terminal.Terminal,
 ): Effect.Effect<void, unknown> {
-  return Effect.suspend(() =>
+  return Effect.suspend((): Effect.Effect<void, unknown> =>
     Effect.gen(function* () {
       yield* terminal.display("Search > ");
       const query = yield* terminal.readLine;

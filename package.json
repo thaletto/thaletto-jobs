@@ -8,7 +8,6 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@effect/cli": "^0.75.1",
     "@effect/language-service": "^0.86.1",
     "@effect/platform-bun": "4.0.0-beta.66",
     "@effect/vitest": "4.0.0-beta.66",
