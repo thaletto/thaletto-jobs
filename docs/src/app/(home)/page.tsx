@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import HomePageContent from "./HomePageContent";
 
 export const metadata: Metadata = {
-  title: "Cortex - Vector Storage for AI Applications",
+  title: "Cortex",
   openGraph: {
     title: "Cortex - Vector Storage for AI Applications",
     description:
