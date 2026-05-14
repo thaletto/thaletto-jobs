@@ -1,7 +1,6 @@
-# @thaletto/cortex
+# [@thaletto/cortex](https://cortex-vector.vercel.app/)
 
 Vector storage for AI/LLM applications, built with [Effect](https://effect.website) and [ZVec](https://github.com/zvec/zvec). Type-safe, pluggable, and designed for explicit memory management.
-
 
 > **⚠️ Beta** — Effect v4 beta. API may change.
 
