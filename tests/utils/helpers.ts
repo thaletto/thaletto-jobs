@@ -1,5 +1,5 @@
 import { Schema as S } from "effect";
-import { VectorId, VectorMetadata } from "../../src/schema/index.ts";
+import { VectorId, VectorMetadata } from "../../src/index.ts";
 
 export const vecId = (value: string) => S.decodeSync(VectorId)(value);
 

@@ -1,8 +1,6 @@
 import { beforeAll, afterAll } from "@effect/vitest";
 import { Effect, Layer, FileSystem } from "effect";
-import { VectorStore, type VectorStoreShape } from "../src/adapters/zvec/vector-store.ts";
-import { VectorStoreLive } from "../src/adapters/zvec/vector-store-live.ts";
-import { ZVecCollectionLive, ZVecCollectionConfig } from "../src/adapters/zvec/collection.ts";
+import { ZVecCollectionLive, ZVecCollectionConfig, VectorStoreLive, VectorStore, type VectorStoreShape } from "../src/index.ts";
 import * as BunFileSystem from "@effect/platform-bun/BunFileSystem";
 import { vectorStoreTests } from "./utils/shared-vector-store.ts";
 

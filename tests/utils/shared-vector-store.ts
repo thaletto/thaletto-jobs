@@ -1,7 +1,6 @@
 import { describe, it, expect } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { VectorStore, type VectorStoreShape } from "../../src/adapters/zvec/vector-store.ts";
-import { VectorNotFoundError } from "../../src/errors/index.ts";
+import { VectorNotFoundError, VectorStore, type VectorStoreShape } from "../../src/index.ts";
 import { vecId, vec, meta } from "./helpers.ts";
 
 export function vectorStoreTests(

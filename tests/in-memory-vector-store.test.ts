@@ -1,7 +1,6 @@
 import { describe, it, expect } from "@effect/vitest";
 import { Effect } from "effect";
-import { VectorStore } from "../src/adapters/zvec/vector-store.ts";
-import { InMemoryVectorStoreLive } from "../src/adapters/in-memory/vector-store.ts";
+import { InMemoryVectorStoreLive, VectorStore } from "../src/index.ts";
 import { vectorStoreTests } from "./utils/shared-vector-store.ts";
 import { vecId, vec, meta } from "./utils/helpers.ts";
 
