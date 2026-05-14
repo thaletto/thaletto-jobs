@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from "effect";
 import {makeCollectionSchema, type ZVecConfig } from "./schema.ts";
-import { ZVecCreateAndOpen, ZVecInitialize, type ZVecCollection as RawCollection } from "@zvec/zvec";
+import { ZVecCreateAndOpen, ZVecInitialize, ZVecLogLevel, ZVecLogType, type ZVecCollection as RawCollection } from "@zvec/zvec";
 import * as Path from "node:path"
 import * as Fs from "node:fs"
 
@@ -8,7 +8,7 @@ let initialized = false;
 
 function ensureInit() {
     if (!initialized) {
-        ZVecInitialize({ logLevel: 1, logType: "console" });
+        ZVecInitialize({ logLevel: ZVecLogLevel.FATAL, logType: ZVecLogType.CONSOLE });
         initialized = true;
     }
 }
