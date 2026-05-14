@@ -11,11 +11,12 @@ export function buildFilter(options: SearchOptions) {
     const parts: string[] = [];
 
     if (options.category) {
-        parts.push(`category:'${esc(options.category)}'`);
+        parts.push(`category = '${esc(options.category)}'`);
     }
 
     for (const tag of options.tags ?? []) {
-        parts.push(`tags:'${esc(tag)}'`);
+        const p = esc(tag);
+        parts.push(`tags LIKE '%${p}%'`);
     }
 
     // TTL guard - always present; -1 means no expiration

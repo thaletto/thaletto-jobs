@@ -6,17 +6,17 @@
  */
 
 import { Effect, Layer } from "effect";
-import { VectorStore } from "@/adapters/zvec/vector-store.js";
-import { ZVecCollection } from "@/adapters/zvec/collection.js";
-import { encodeRow, decodeStoredEntry, decodeSearchResult } from "@/lib/codec.js";
-import { buildFilter } from "@/lib/filters.js";
-import { VECTOR_FIELD } from "@/adapters/zvec/schema.js";
-import { VectorStoreError } from "@/errors/index.js";
+import { VectorStore } from "./vector-store.ts";
+import { ZVecCollection } from "./collection.ts";
+import { encodeRow, decodeStoredEntry, decodeSearchResult } from "../../lib/codec.ts";
+import { buildFilter } from "../../lib/filters.ts";
+import { VECTOR_FIELD } from "./schema.ts";
+import { VectorStoreError, VectorNotFoundError } from "../../errors/index.ts";
 import type {
     VectorId,
     VectorMetadata,
     SearchOptions,
-} from "@/schema/index.js";
+} from "../../schema/index.ts";
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
@@ -73,12 +73,12 @@ export const VectorStoreLive = Layer.effect(
                     "Vector search failed"
                 );
 
-                // Decode each result, collecting errors — a bad row is skipped, not fatal
+                // ZVec returns cosine distance (0 = identical). Convert to similarity.
                 return yield* Effect.all(
                     raw.map(r =>
                         decodeSearchResult(
                             r.id,
-                            r.score,
+                            1 - r.score,
                             r.fields as Record<string, unknown>
                         )
                     ),
@@ -95,7 +95,9 @@ export const VectorStoreLive = Layer.effect(
                     `Failed to fetch vector ${id}`
                 );
 
-                if (!result?.[id]) return null;
+                if (!result?.[id]) {
+                    return yield* Effect.fail(new VectorNotFoundError({ id }));
+                }
 
                 const r = result[id];
                 return yield* decodeStoredEntry(
