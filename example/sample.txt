@@ -1,0 +1,23 @@
+TypeScript adds static type checking to JavaScript, catching errors at compile time rather than runtime. It provides interfaces, generics, and advanced type utilities that make large codebases more maintainable. TypeScript compiles down to plain JavaScript and runs anywhere JavaScript runs.
+
+Effect is a TypeScript library that brings structured concurrency and algebraic effects to the language. It provides a powerful way to handle errors, manage dependencies, and compose asynchronous operations. The library uses generator functions and fiber-based concurrency for predictable execution.
+
+Rust is a systems programming language focused on memory safety and performance. Its ownership model eliminates the need for a garbage collector while preventing data races at compile time. Rust is commonly used in web assembly, embedded systems, and infrastructure tooling.
+
+React is a JavaScript library for building user interfaces. It uses a component-based architecture where each component manages its own state. React's virtual DOM efficiently updates the browser DOM by computing the minimal set of changes needed after a state update.
+
+Python has become the dominant language for data science and machine learning. Its ecosystem includes NumPy for numerical computing, Pandas for data manipulation, and PyTorch for deep learning. Python's readability makes it ideal for rapid prototyping and collaboration.
+
+PostgreSQL is a powerful open-source relational database with advanced features like JSON support, full-text search, and custom indexing. It supports ACID transactions and can be extended with custom functions written in multiple languages.
+
+Bun is a fast all-in-one JavaScript runtime designed as a drop-in replacement for Node.js. It includes a built-in bundler, transpiler, test runner, and package manager. Bun is written in Zig and uses JavaScriptCore engine for fast startup times.
+
+Functional programming emphasizes pure functions and immutable data. Languages like Haskell and Elm use algebraic data types and pattern matching. Effect brings these concepts to TypeScript with its functional effect system.
+
+WebAssembly allows running compiled code in the browser at near-native speed. Languages like Rust, C, and Go can compile to WebAssembly. This enables high-performance applications like video editing, games, and scientific computing in the browser.
+
+Distributed systems involve multiple computers working together to appear as a single system. They deal with challenges like network partitions, clock skew, and partial failures. Consensus algorithms like Raft and Paxos help distributed systems agree on state.
+
+Machine learning models learn patterns from data to make predictions. Supervised learning uses labeled examples, while unsupervised learning finds hidden structure in unlabeled data. Deep learning uses neural networks with many layers to model complex relationships.
+
+Docker containers package applications with their dependencies into lightweight, portable units. Unlike virtual machines, containers share the host operating system kernel. This makes them faster to start and more resource-efficient than traditional virtualization.
