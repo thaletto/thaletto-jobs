@@ -91,7 +91,7 @@ function loop(
 ): Effect.Effect<void, unknown> {
   return Effect.suspend((): Effect.Effect<void, unknown> =>
     Effect.gen(function* () {
-      yield* terminal.display("Search > ");
+      yield* terminal.display("Search >\n");
       const query = yield* terminal.readLine;
       const input = query.trim();
       if (input.toLowerCase() === "quit" || input.toLowerCase() === "exit") {
