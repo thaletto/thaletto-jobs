@@ -13,21 +13,26 @@ function GitHubIcon({ size = 24 }: { size?: number }) {
 
 export default function HomePageContent() {
   return (
-    <BorderGlow className="flex flex-col justify-center text-center max-w-2xl m-auto p-4">
-      <div className="flex items-center justify-center mb-8 mt-2">
-        <Image src="/cortex-logo.svg" alt="Logo" width={116} height={116} />
+    <BorderGlow className="flex flex-col justify-center text-center w-full max-w-sm sm:max-w-lg md:max-w-2xl m-auto px-4 py-6 sm:p-4">
+      <div className="flex items-center justify-center my-8">
+        <Image
+          src="/cortex-logo.svg"
+          alt="Logo"
+          width={256}
+          height={256}
+        />
       </div>
-      <p className="text-lg text-gray-300 mb-8">
+      <p className="text-base sm:text-lg text-gray-300 mb-4 px-2">
         Developer-controlled context memory layer for Effect applications
       </p>
-      <p className="text-gray-400 mb-8">
+      <p className="text-sm sm:text-base text-gray-400 mb-4 px-2">
         Vector storage for AI/LLM applications, built with Effect and ZVec.
         Type-safe, pluggable, and designed for explicit memory management.
       </p>
-      <div className="flex gap-4 justify-center">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-2">
         <Link
           href="/docs"
-          className="inline-flex items-center rounded-lg bg-white text-black px-4 py-2 font-medium"
+          className="inline-flex items-center justify-center w-full sm:w-auto rounded-lg bg-white text-black px-6 py-2.5 font-medium"
         >
           Get Started
         </Link>
@@ -35,7 +40,7 @@ export default function HomePageContent() {
           href="https://github.com/thaletto/cortex"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg border border-white/20 text-white px-4 py-2 font-medium"
+          className="inline-flex items-center justify-center gap-2 w-full sm:w-auto rounded-lg border border-white/20 text-white px-6 py-2.5 font-medium"
         >
           <GitHubIcon size={18} />
           GitHub
