@@ -24,9 +24,7 @@ beforeAll(async () => {
     yield* fs.remove(".cortex", { recursive: true, force: true });
   }).pipe(Effect.provide(BunFileSystem.layer), Effect.runPromise);
 
-  store = await Effect.gen(function* () {
-    return yield* VectorStore;
-  }).pipe(Effect.provide(ZVecLayer), Effect.runPromise);
+  store = await VectorStore.pipe(Effect.provide(ZVecLayer), Effect.runPromise);
 });
 
 afterAll(async () => {
