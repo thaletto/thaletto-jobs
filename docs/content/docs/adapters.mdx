@@ -1,0 +1,55 @@
+---
+title: Adapters
+description: Storage backends and how to use them
+---
+
+Cortex supports multiple storage backends through a pluggable adapter system.
+
+## ZVec (Default)
+
+Persistent, in-process vector database with WAL persistence. Data is stored in `.cortex/`.
+
+```typescript
+import {
+  ZVecCollectionLive, ZVecCollectionConfig,
+} from "@thaletto/cortex";
+
+const layer = Layer.provideMerge(VectorStoreLive, Layer.provideMerge(
+  ZVecCollectionLive,
+  Layer.succeed(ZVecCollectionConfig, { dimension: 128 }),
+));
+```
+
+### Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `dimension` | `number` | Vector dimensionality (required) |
+| `path` | `string` | Storage path (default: `.cortex/`) |
+
+## InMemory (Testing)
+
+Fresh state per `Effect.provide` call - no cleanup needed. Great for tests.
+
+```typescript
+import { InMemoryVectorStoreLive } from "@thaletto/cortex";
+
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+  // ...
+}).pipe(Effect.provide(InMemoryVectorStoreLive));
+```
+
+## Writing a Custom Adapter
+
+Implement the `VectorStore` service interface:
+
+```typescript
+export const MyCustomStoreLive = Layer.succeed(VectorStore, {
+  store: (id, vector, metadata) => // ...
+  search: (queryVector, options) => // ...
+  getEntry: (id) => // ...
+  deleteEntry: (id) => // ...
+  size: Effect.succeed(0),
+});
+```

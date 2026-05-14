@@ -1,0 +1,58 @@
+---
+title: Development
+description: Contributing to Cortex development
+---
+
+## Setup
+
+```bash
+git clone https://github.com/thaletto/cortex
+cd cortex
+bun install
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `bun test` | Run all tests (17 in-memory + 14 ZVec) |
+| `bun run example` | Interactive CLI demo |
+| `bun run example/index.ts path/to/file.txt` | Demo with custom file |
+
+## Demo
+
+```bash
+bun run example
+```
+
+Chunks a text file, indexes vectors, and starts an interactive search prompt:
+
+```
+  File: ./example/sample.txt
+  Chunks: 8
+  Storing vectors...
+
+  Stored 8 chunks. Ready.
+
+Search > Typescript
+  [0.468] TypeScript adds static type checking to JavaScript...
+  [0.410] designed as a drop-in replacement for Node.js...
+
+```
+
+## Project Structure
+
+```
+src/
+  vector-store.ts    # VectorStore service definition
+  zvec-collection.ts # ZVec adapter implementation
+  in-memory.ts       # InMemory adapter implementation
+  errors.ts          # Error types
+  schemas.ts         # Effect Schema definitions
+example/
+  index.ts           # Interactive CLI demo
+```
+
+## License
+
+MIT

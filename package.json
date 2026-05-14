@@ -9,7 +9,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "example": "bun run example/index.ts"
+    "example": "bun run example/index.ts",
+    "docs": "bun run --cwd docs dev",
+    "docs:build": "bun run --cwd docs build"
   },
   "files": [
     "src/"

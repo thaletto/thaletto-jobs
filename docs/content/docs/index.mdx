@@ -1,0 +1,101 @@
+---
+title: Introduction
+description: Developer-controlled context memory layer for Effect applications
+---
+
+Cortex is a **vector storage** library for AI/LLM applications, built with [Effect](https://effect.website) and [ZVec](https://github.com/zvec/zvec). It provides type-safe, pluggable memory management designed for explicit developer control.
+
+## Why Cortex
+
+LLM applications need memory - user preferences, conversation history, document embeddings, agent state. Most solutions fall into two camps:
+
+- **Black-box databases** (Pinecone, Weaviate) - powerful but opaque, require network calls, leak vendor lock-in
+- **Manual in-memory caches** - fast but fragile, no persistence, no search
+
+Cortex sits in the middle. It gives you an in-process vector store with WAL persistence, type-safe schemas via Effect, and a pluggable adapter interface so you can swap backends without changing application code.
+
+## Key Features
+
+- **Effect-native** - First-class Effect integration: services are `Context.Tag`s, errors are `TaggedError`s, composition uses `Layer`. No hidden effects, no thrown exceptions, full type safety through the Effect ecosystem.
+- **Pluggable adapters** - `VectorStore` is an interface. Use ZVec for persistent storage, InMemory for tests, or write your own. The rest of your code never knows the difference.
+- **Type-safe schemas** - Metadata fields (`content`, `category`, `tags`, `expiresAt`) are Effect Schema definitions. Decode failures produce `VectorDecodeError` instead of runtime crashes.
+- **Explicit TTL** - Every entry carries an `expiresAt` field. Expired vectors are automatically excluded from search results and filtered at the query level.
+- **Tagged errors** - `VectorStoreError`, `VectorNotFoundError`, and `VectorDecodeError` are discriminated unions you can pattern-match with `Effect.catchTags`.
+- **In-process, zero-infra** - No external services, no network calls. Data lives in `.cortex/` with WAL persistence from ZVec.
+
+## When to Use It
+
+| Use case | Example |
+|---|---|
+| User preference memory | Store learned preferences per user, search by context |
+| Document retrieval (RAG) | Chunk and embed documents, search by query vector |
+| Agent state tracking | Persist agent observations, retrieve relevant history |
+| Session context | TTL-expiring conversation summaries |
+| Testing | Swap to `InMemoryVectorStoreLive` for fast, isolated tests |
+
+
+## Installation
+
+```bash
+bun add @thaletto/cortex effect@beta
+```
+
+## Quick Start
+
+```typescript
+import { Effect, Layer, Schema as S } from "effect";
+import {
+  VectorStore, VectorStoreLive,
+  ZVecCollectionLive, ZVecCollectionConfig,
+  VectorMetadata, VectorId,
+} from "@thaletto/cortex";
+
+// 1. Wire up the ZVec-backed store (128-dim vectors, persisted to .cortex/)
+const CortexLive = Layer.provideMerge(
+  VectorStoreLive,
+  Layer.provideMerge(
+    ZVecCollectionLive,
+    Layer.succeed(ZVecCollectionConfig, { dimension: 128 }),
+  ),
+);
+
+// 2. Define a program that stores a vector and searches it back
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+
+  const id = S.decodeSync(VectorId)("doc-1");
+  yield* store.store(id, new Float32Array(128), new VectorMetadata({
+    content: "User prefers TypeScript over JavaScript",
+    category: "preferences",
+    tags: ["lang"],
+    metadata: {},
+    expiresAt: null,
+  }));
+
+  const results = yield* store.search(new Float32Array(128), {
+    limit: 5,
+    category: "preferences",
+  });
+
+  console.log(results);
+});
+
+// 3. Run with all dependencies provided
+Effect.runPromise(program.pipe(Effect.provide(CortexLive)));
+```
+
+## Project Status
+
+| Feature | Status |
+|---------|--------|
+| `VectorStore` interface | Complete |
+| ZVec adapter (persistent, WAL) | Complete |
+| InMemory adapter (testing) | Complete |
+| `MemoryService` (high-level API) | Planned |
+| `ContextManager` (validation, TTL) | Planned |
+| `EmbeddingService` integration | Planned |
+| Batch operations | Planned |
+
+## License
+
+MIT

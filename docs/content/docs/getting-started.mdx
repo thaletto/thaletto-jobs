@@ -1,0 +1,212 @@
+---
+title: Getting Started
+description: Install, configure, and use Cortex step by step
+---
+
+## Installation
+
+```bash
+bun add @thaletto/cortex
+```
+
+Cortex requires `effect` as a peer dependency (v4 beta).
+
+## Choose a Storage Adapter
+
+Cortex ships with two adapters:
+
+| Adapter | When to use |
+|---------|-------------|
+| **ZVec** (default) | Production - persists vectors to `.cortex/` with WAL logging |
+| **InMemory** | Tests / prototyping - fresh state per `Effect.provide`, no cleanup |
+
+## 1. ZVec (Production)
+
+### Define the Layer Stack
+
+A Cortex application needs three layers wired together:
+
+```typescript
+import { Effect, Layer } from "effect";
+import {
+  VectorStore, VectorStoreLive,
+  ZVecCollectionLive, ZVecCollectionConfig,
+} from "@thaletto/cortex";
+
+const CortexLive = Layer.provideMerge(
+  VectorStoreLive,
+  Layer.provideMerge(
+    ZVecCollectionLive,
+    Layer.succeed(ZVecCollectionConfig, { dimension: 384 }),
+  ),
+);
+```
+
+- `ZVecCollectionConfig` - tells ZVec the vector dimension (default: 384). Must match your embedding model's output size.
+- `ZVecCollectionLive` - opens (or creates) the `.cortex/` collection.
+- `VectorStoreLive` - implements `VectorStore` on top of the ZVec collection.
+
+### Store a Vector
+
+```typescript
+import { Schema as S } from "effect";
+import { VectorId, VectorMetadata } from "@thaletto/cortex";
+
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+
+  const id = S.decodeSync(VectorId)("user-1-preference");
+  yield* store.store(id, new Float32Array(384), new VectorMetadata({
+    content: "User prefers TypeScript over JavaScript",
+    category: "preferences",
+    tags: ["lang", "typescript"],
+    metadata: { source: "onboarding" },
+    expiresAt: null, // never expires
+  }));
+
+  console.log("Stored.");
+});
+```
+
+**Notes:**
+- `VectorId` is a branded string - use `S.decodeSync(VectorId)(...)` to create one.
+- The vector array length **must** match the dimension in `ZVecCollectionConfig`.
+- `expiresAt: null` means the entry never expires. Set a `Date` for automatic TTL.
+- `metadata` is an arbitrary `Record<string, unknown>` for your own data.
+
+### Search by Similarity
+
+```typescript
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+
+  const results = yield* store.search(queryVector, {
+    limit: 10,
+    category: "preferences",
+  });
+
+  for (const result of results) {
+    console.log(`[${result.score.toFixed(3)}] ${result.content}`);
+    // result also carries: id, category, tags, metadata, expiresAt
+  }
+});
+```
+
+**Filtering:**
+- `category` - exact match on the category field
+- `tags` - any-match (OR), each tag is a LIKE query
+- Expired entries (`expiresAt` in the past) are always excluded
+
+### Handle Errors
+
+```typescript
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+  const entry = yield* store.getEntry(S.decodeSync(VectorId)("missing"));
+}).pipe(
+  Effect.catchTags({
+    VectorNotFoundError: (e) =>
+      Effect.succeed(`Not found: ${e.id}`),
+    VectorDecodeError: (e) =>
+      Effect.fail(`Corrupt data: ${e.cause}`),
+    VectorStoreError: (e) =>
+      Effect.fail(`Storage error: ${e.description}`),
+  }),
+);
+```
+
+### Complete Example
+
+```typescript
+import { Effect, Layer, Schema as S } from "effect";
+import {
+  VectorStore, VectorStoreLive,
+  ZVecCollectionLive, ZVecCollectionConfig,
+  VectorId, VectorMetadata,
+} from "@thaletto/cortex";
+
+const CortexLive = Layer.provideMerge(
+  VectorStoreLive,
+  Layer.provideMerge(
+    ZVecCollectionLive,
+    Layer.succeed(ZVecCollectionConfig, { dimension: 384 }),
+  ),
+);
+
+const program = Effect.gen(function* () {
+  const store = yield* VectorStore;
+  const id = S.decodeSync(VectorId)("doc-1");
+
+  yield* store.store(id, new Float32Array(384), new VectorMetadata({
+    content: "TypeScript adds static type checking to JavaScript",
+    category: "languages",
+    tags: ["typescript"],
+    metadata: {},
+    expiresAt: null,
+  }));
+
+  const results = yield* store.search(new Float32Array(384), { limit: 5 });
+  console.log(results);
+});
+
+Effect.runPromise(program.pipe(Effect.provide(CortexLive)));
+```
+
+## 2. InMemory (Testing)
+
+For tests, use `InMemoryVectorStoreLive` - no config needed, fresh state per `Effect.provide`:
+
+```typescript
+import { Effect } from "effect";
+import { VectorStore, InMemoryVectorStoreLive } from "@thaletto/cortex";
+
+const test = Effect.gen(function* () {
+  const store = yield* VectorStore;
+  // store, search, getEntry, deleteEntry all work the same
+  const count = yield* store.size;
+  console.log(count); // 0
+});
+
+Effect.runPromise(test.pipe(Effect.provide(InMemoryVectorStoreLive)));
+```
+
+**Test pattern** - use `Layer.provideMerge` to combine with mock layers:
+
+```typescript
+import { describe, it, Effect } from "@effect/vitest";
+
+describe("VectorStore", () => {
+  it("should store and retrieve", () =>
+    Effect.gen(function* () {
+      const store = yield* VectorStore;
+      const id = S.decodeSync(VectorId)("test-1");
+      yield* store.store(id, new Float32Array(128), /* ... */);
+      const count = yield* store.size;
+      expect(count).toBe(1);
+    }).pipe(Effect.provide(InMemoryVectorStoreLive)));
+});
+```
+
+## Choosing a Dimension
+
+The dimension must match your embedding model's output:
+
+| Model | Typical dimension |
+|-------|------------------|
+| OpenAI `text-embedding-3-small` | 512 (can be smaller via `dimensions`) |
+| OpenAI `text-embedding-3-large` | 3072 (can be smaller) |
+| Sentence Transformers (all-MiniLM) | 384 |
+| BAAI/bge-small-en-v1.5 | 384 |
+| Cohere embed-english-v3.0 | 1024 |
+
+Set it in `ZVecCollectionConfig`:
+
+```typescript
+Layer.succeed(ZVecCollectionConfig, { dimension: 384 })
+```
+
+## Next Steps
+
+- [Core Concepts](/docs/core-concepts) - understand the full API and data model
+- [API Reference](/docs/api) - complete type signatures
+- [Adapters](/docs/adapters) - learn about all storage backends and how to write custom ones

@@ -1,0 +1,46 @@
+---
+title: Core Concepts
+description: Understand the architecture and key abstractions
+---
+
+## VectorStore
+
+`VectorStore` is the central abstraction. It defines a protocol for storing, retrieving, searching, and deleting vector entries.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `store` | `(id, vector, metadata) => Effect<void, VectorStoreErrors>` | Upsert a vector + metadata |
+| `search` | `(queryVector, options) => Effect<SearchResult[], VectorStoreErrors>` | Nearest-neighbour search with filters |
+| `getEntry` | `(id) => Effect<StoredEntry, VectorStoreErrors>` | Fetch by ID (fails with `VectorNotFoundError`) |
+| `deleteEntry` | `(id) => Effect<void, VectorStoreErrors>` | Remove entry (no-op if missing) |
+| `size` | `Effect<number, VectorStoreErrors>` | Total stored vectors |
+
+## SearchOptions
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | `number` (1–1000) | `10` | Max results |
+| `category` | `string` | - | Filter by category |
+| `tags` | `string[]` | - | Filter by tags |
+
+Expired entries (by `expiresAt`) are always excluded from search results.
+
+## Error Types
+
+- **`VectorStoreError`** - Storage operation failed
+- **`VectorNotFoundError`** - Entry not found (`_tag: "VectorNotFoundError"`)
+- **`VectorDecodeError`** - Data corruption on read
+
+## VectorMetadata
+
+Each vector entry stores metadata alongside the vector:
+
+```typescript
+new VectorMetadata({
+  content: "string describing the vector",
+  category: "preferences",         // for filtering
+  tags: ["lang", "typescript"],    // for filtering
+  metadata: {},                    // arbitrary JSON data
+  expiresAt: null,                 // optional TTL (Date)
+})
+```
